@@ -1,0 +1,5 @@
+* Toison
+
+Toison represents a JSON file as a heatmap representing the relative size of all its members.
+
+This should help you find bottlenecks and optimize your JSON files.
