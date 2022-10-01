@@ -121,7 +121,7 @@ impl Node {
             "{}{}{}",
             indent,
             cardinality,
-            &self.tag.clone().unwrap_or(String::new())
+            &self.tag.clone().unwrap_or_default()
         );
         if id.len() > w_tagline {
             id = format!("{}…", id.chars().take(w_tagline - 2).collect::<String>());
@@ -136,7 +136,7 @@ impl Node {
         );
         println!(
             "{:55} {}",
-            header.truecolor(100 + (155 as f32 * rel_size) as u8, 100, 100),
+            header.truecolor(100 + (155_f32 * rel_size) as u8, 100, 100),
             "▒".repeat((rel_size * w_bar as f32) as usize)
         );
         if let Some(children) = &self.children {
