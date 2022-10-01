@@ -1,5 +1,28 @@
 * Toison
+Toison presents a JSON file as a heatmap representing the relative size of all its members. This should help you find bottlenecks and optimize your JSON files.
 
-Toison represents a JSON file as a heatmap representing the relative size of all its members.
+[[file:images/example.png]]
 
-This should help you find bottlenecks and optimize your JSON files.
+** Installation
+To install Toison, you need the [[https://www.rust-lang.org/en-US/install.html][Rust compiler]]. You can then build toison using =cargo=, the Rust build tool:
+
+#+begin_src bash
+  cargo install toison
+#+end_src
+
+** Usage
+#+begin_src
+Usage: toison [OPTIONS] <JSON_FILE>
+
+Arguments:
+  <JSON_FILE>
+
+Options:
+  -t, --threshold <THRESHOLD>  hide nodes under this percentge of the total size [default: 0]
+  -u, --unit <UNIT>            the unit with which to weight nodes [default: bytes] [possible values: bytes, children]
+  -h, --help                   Print help information
+  -V, --version                Print version information
+#+end_src
+
+* License
+Toison is distributed under the GPL-compatible [[file:LICENSE][EUPL v1.2]] license.
