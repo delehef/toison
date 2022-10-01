@@ -27,11 +27,16 @@ impl Count {
 struct Args {
     json_file: String,
 
-    #[arg(short, long, default_value_t = 0.0)]
+    #[arg(
+        short,
+        long,
+        default_value_t = 0.0,
+        help = "hide nodes under this percentge of the total size"
+    )]
     threshold: f32,
 
-    #[arg(short, long, value_enum, default_value_t = Count::Bytes)]
-    count: Count,
+    #[arg(short, long, value_enum, default_value_t = Count::Bytes, help="the unit with which to weight nodes")]
+    unit: Count,
 }
 
 #[derive(Debug, Clone)]
@@ -134,9 +139,10 @@ impl Node {
             format!("({})", count.format(self.size(count))),
             w_tagline = w_tagline,
         );
+        let color_factor = (155_f32 * rel_size) as u8;
         println!(
             "{:55} {}",
-            header.truecolor(100 + (155_f32 * rel_size) as u8, 100, 100),
+            header.truecolor(100 + color_factor, 100, 100),
             "▒".repeat((rel_size * w_bar as f32) as usize)
         );
         if let Some(children) = &self.children {
@@ -166,10 +172,10 @@ fn main() -> Result<()> {
     };
 
     root.render(
-        root.size(args.count),
+        root.size(args.unit),
         0,
         args.threshold / 100.,
-        args.count,
+        args.unit,
         width,
     );
 
