@@ -1,7 +1,16 @@
 [package]
 name = "toison"
-version = "0.1.0"
+version = "1.0.0"
+license = "EUPL-1.2"
 edition = "2021"
+description = "Visualize size distribution of JSON files"
+readme = "README.org"
+homepage = "https://github.com/delehef/toison"
+repository = "https://github.com/delehef/toison"
+keywords = ["cli", "json", "visualization"]
+categories = ["command-line-utilities", "visualization"]
+exclude = ["images/", ".*"]
+publish = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
