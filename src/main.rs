@@ -89,7 +89,7 @@ struct Args {
     )]
     max_depth: Option<isize>,
 
-    #[arg(short, long, value_enum, default_value_t = Count::Bytes, help="the unit with which to weight nodes")]
+    #[arg(short, long, value_enum, default_value_t = Unit::Bytes, help="the unit with which to weight nodes")]
     unit: Unit,
 
     #[arg(short, long, value_enum, default_value_t = Colorizer::Hellscape, help="how to colorize output")]

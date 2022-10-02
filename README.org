@@ -19,10 +19,17 @@ Arguments:
 
 Options:
   -t, --threshold <THRESHOLD>  hide nodes under this percentge of the total size [default: 0]
+  -m, --max-depth <MAX_DEPTH>  the maximum depth to render; if negative, counts from the deepest node
   -u, --unit <UNIT>            the unit with which to weight nodes [default: bytes] [possible values: bytes, children]
+  -c, --colors <COLORS>        how to colorize output [default: hellscape] [possible values: hellscape, gradient, monochrome, none]
   -h, --help                   Print help information
   -V, --version                Print version information
 #+end_src
 
 * License
 Toison is distributed under the GPL-compatible [[file:LICENSE][EUPL v1.2]] license.
+
+* Changelog
+** 1.1.0
+  - Add several color schemes
+  - Add the ~max-depth~ flag
