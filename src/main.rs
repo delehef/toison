@@ -1,25 +1,71 @@
 use anyhow::*;
 use clap::{Parser, ValueEnum};
-use colored::Colorize;
+use colored::{Color, Colorize};
 use human_format::*;
 use serde_json::Value;
 use thousands::Separable;
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
-enum Count {
+enum Unit {
     Bytes,
     Children,
 }
-impl Count {
+impl Unit {
     fn format(&self, x: usize) -> String {
         match self {
-            Count::Bytes => Formatter::new()
+            Unit::Bytes => Formatter::new()
                 .with_scales(Scales::Binary())
                 .with_suffix("B")
                 .format(x as f64),
-            Count::Children => Formatter::new().with_scales(Scales::SI()).format(x as f64),
+            Unit::Children => Formatter::new().with_scales(Scales::SI()).format(x as f64),
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum Colorizer {
+    Hellscape,
+    Gradient,
+    Monochrome,
+    None,
+}
+impl Colorizer {
+    fn colorize(&self, rel: f32) -> Color {
+        match self {
+            Colorizer::Hellscape => {
+                let rel_b = (155_f32 * rel) as u8;
+                Color::TrueColor {
+                    r: 100 + rel_b,
+                    g: 100,
+                    b: 100,
+                }
+            }
+            Colorizer::Gradient => {
+                let rel_b = (155_f32 * rel) as u8;
+                Color::TrueColor {
+                    r: 100 + rel_b,
+                    g: 200 - rel_b,
+                    b: 100,
+                }
+            }
+            Colorizer::Monochrome => {
+                let rel_b = (155_f32 * rel) as u8;
+                Color::TrueColor {
+                    r: 100 + rel_b,
+                    g: 100 + rel_b,
+                    b: 100 + rel_b,
+                }
+            }
+            Colorizer::None => Color::White,
+        }
+    }
+}
+
+struct DisplaySettings {
+    counter: Unit,
+    colorizer: Colorizer,
+    depth: Option<usize>,
+    width: usize,
 }
 
 #[derive(Parser, Debug)]
@@ -35,8 +81,19 @@ struct Args {
     )]
     threshold: f32,
 
+    #[arg(
+        short,
+        long,
+        allow_negative_numbers = true,
+        help = "the maximum depth to render; if negative, counts from the deepest node"
+    )]
+    max_depth: Option<isize>,
+
     #[arg(short, long, value_enum, default_value_t = Count::Bytes, help="the unit with which to weight nodes")]
-    unit: Count,
+    unit: Unit,
+
+    #[arg(short, long, value_enum, default_value_t = Colorizer::Hellscape, help="how to colorize output")]
+    colors: Colorizer,
 }
 
 #[derive(Debug, Clone)]
@@ -86,13 +143,6 @@ impl Node {
         }
     }
 
-    fn size(&self, count: Count) -> usize {
-        match count {
-            Count::Bytes => self.size_b,
-            Count::Children => self.size_c,
-        }
-    }
-
     fn leaf(key_size: usize, size: usize, tag: String) -> Node {
         Node {
             tag: if tag.is_empty() { None } else { Some(tag) },
@@ -104,14 +154,19 @@ impl Node {
         }
     }
 
-    fn render(&self, total_size: usize, depth: usize, threshold: f32, count: Count, width: usize) {
+    fn render(&self, total_size: usize, depth: usize, threshold: f32, settings: &DisplaySettings) {
+        if let Some(max_depth) = settings.depth {
+            if depth >= max_depth {
+                return;
+            }
+        }
         // 11 + 6 + 2 = 19 chars required for numbers
         // -> (WIDTH - 19)×2/3 for tagline
         // -> (WIDTH - 19)×1/3 for bar
-        let w_tagline = ((width - 19) * 2) / 3;
-        let w_bar = width - 19 - w_tagline - 2;
+        let w_tagline = ((settings.width - 19) * 2) / 3;
+        let w_bar = settings.width - 19 - w_tagline - 2;
 
-        let rel_size = self.size(count) as f32 / total_size as f32;
+        let rel_size = self.size(settings.counter) as f32 / total_size as f32;
         if rel_size < threshold {
             return;
         }
@@ -136,20 +191,43 @@ impl Node {
             "{:0w_tagline$} {:>6.2}% {:>11}",
             id,
             100. * rel_size,
-            format!("({})", count.format(self.size(count))),
+            format!("({})", settings.counter.format(self.size(settings.counter))),
             w_tagline = w_tagline,
         );
-        let color_factor = (155_f32 * rel_size) as u8;
         println!(
             "{:55} {}",
-            header.truecolor(100 + color_factor, 100, 100),
+            header.color(settings.colorizer.colorize(rel_size)),
             "▒".repeat((rel_size * w_bar as f32) as usize)
         );
         if let Some(children) = &self.children {
             for child in children {
-                child.render(total_size, depth + 1, threshold, count, width);
+                child.render(total_size, depth + 1, threshold, &settings);
             }
         }
+    }
+
+    fn size(&self, count: Unit) -> usize {
+        match count {
+            Unit::Bytes => self.size_b,
+            Unit::Children => self.size_c,
+        }
+    }
+
+    fn max_depth(&self) -> usize {
+        fn _max_depth(n: &Node, ax: usize) -> usize {
+            match n.children {
+                Some(ref children) => {
+                    1 + children
+                        .iter()
+                        .map(|c| _max_depth(c, ax))
+                        .max()
+                        .unwrap_or(0)
+                }
+                None => ax,
+            }
+        }
+
+        _max_depth(self, 0)
     }
 }
 
@@ -171,13 +249,19 @@ fn main() -> Result<()> {
         100
     };
 
-    root.render(
-        root.size(args.unit),
-        0,
-        args.threshold / 100.,
-        args.unit,
+    let settings = DisplaySettings {
+        counter: args.unit,
+        colorizer: args.colors,
+        depth: args.max_depth.map(|d| {
+            if d >= 0 {
+                d as usize
+            } else {
+                ((root.max_depth() as isize) + d - 1) as usize
+            }
+        }),
         width,
-    );
+    };
+    root.render(root.size(args.unit), 0, args.threshold / 100., &settings);
 
     Ok(())
 }
